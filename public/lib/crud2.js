@@ -37,17 +37,42 @@ $('.saveBtn').on('click', function () {
                 $('#modal_' + target).modal('hide');
                 loadTabel(target);
             } else {
-                
+                // Hapus semua pesan error sebelumnya
                 $('.error-block').text('');
-                
-                
-                $.each(response.error, function (key, val) {
-                    $(`#${key}`).siblings('.error-block').text(val);
-                });
+                $('#global-error').text('').hide();
+
+                // Tampilkan error validasi per field
+                if (response.error) {
+                    $.each(response.error, function (key, val) {
+                        const errorElement = $(`#${key}`).siblings('.error-block');
+                        if (errorElement.length) {
+                            errorElement.text(val);
+                        }
+                    });
+                }
+
+                // Tampilkan pesan error untuk data duplikat
+                if (response.duplicateErrors) {
+                    $.each(response.duplicateErrors, function (key, val) {
+                        const errorElement = $(`#${key}`).siblings('.error-block');
+                        if (errorElement.length) {
+                            errorElement.text(val);
+                        }
+                    });
+                }
+
+                // Tampilkan pesan error global jika ada
+                if (response.message) {
+                    $('#global-error').text(response.message).show();
+                }
             }
+        },
+        error: function (xhr, status, error) {
+            alert('Terjadi kesalahan pada server: ' + error);
         }
     });
 });
+
 
 function loadTabel(target) {
     const table = $(`#table_${target}`);
@@ -113,10 +138,10 @@ function generateTable(data, table) {
 
 
 $(document).on('click', '.editBtn', function () {
-	let target = $(this).data('target');
+    let target = $('#table_pendaftaran_awal_kelas').data('aksi');
 	let id = $(this).data('value');
 	console.log(target);
-	let url = baseClass + '/edit_' + target + '/' + id;
+    let url = baseClass + '/edit_' + target + '/' + id;
 	let form = '#form_' + target;
 	$.ajax({
 		url: url,
@@ -130,6 +155,7 @@ $(document).on('click', '.editBtn', function () {
 				$('#modal_' + target).modal('show');
 			} else {
 				alert(response.message);
+                loadTabel(target);
 			}
 		}
 	});
@@ -138,7 +164,7 @@ $(document).on('click', '.editBtn', function () {
 
 
 $(document).on('click', '.deleteBtn', function () {
-	let target = $(this).data('target');
+    let target = $('#table_pendaftaran_awal_kelas').data('aksi');
 	let id = $(this).data('value');
 	let url = baseClass + '/delete_' + target + '/' + id;
 	let form = '#form_' + target;
@@ -152,6 +178,7 @@ $(document).on('click', '.deleteBtn', function () {
 				loadTabel(target);
 			} else {
 				alert(response.message);
+                loadTabel(target);
 			}
 		}
 	});

@@ -7,6 +7,12 @@ class Kelas extends CI_Controller
 	public function __construct()
 	{
 		parent::__construct();
+		
+		if (!$this->session->userdata('is_login')) {
+            redirect('login', 'refresh'); 
+        }
+
+		$this->load->model('User_model');
 		$this->load->model('Masterdata_model', 'md');
 	}
 
@@ -20,21 +26,27 @@ class Kelas extends CI_Controller
 		$this->load->view('template', $data);
 	}
 
-	public function option_tahun_pelajaran()
+
+	public function getOption_tahun_pelajaran()
 	{
 		$q = $this->md->getAllTahunPelajaranNotDeleted();
-		$ret = '<option value="">Pilih Tahun Pelajaran</option>';
+		$opt = '<option value="">Pilih Tahun Pelajaran</option>';
 		if ($q->num_rows() > 0) {
 			foreach ($q->result() as $row) {
-				$ret .= '<option value="' . $row->id . '">' . $row->nama_tahun_pelajaran . '</option>';
+				$opt .= '<option value="' . $row->id . '">' . $row->nama_tahun_pelajaran . '</option>';
 			}
 		}
-		echo $ret;
+		echo $opt;
 	}
 
-	public function option_jurusan($id)
+	public function getOption_jurusan()
 	{
-
+		$id = $this->input->post('id');
+	
+		// Log ID yang diterima untuk debugging
+		log_message('info', 'ID yang diterima: ' . $id);
+	
+		// Ambil data jurusan berdasarkan ID tahun pelajaran
 		$q = $this->md->getJurusanByTahunPelajaranID($id);
 		$ret = '<option value="">Pilih Jurusan</option>';
 		if ($q->num_rows() > 0) {
@@ -42,9 +54,10 @@ class Kelas extends CI_Controller
 				$ret .= '<option value="' . $row->id . '">' . $row->nama_jurusan . '</option>';
 			}
 		}
+	
 		echo $ret;
-	}
-
+	}	
+	
 	public function table_kelas()
 	{
 		$q = $this->md->getAllKelasNotDeleted();
@@ -67,44 +80,60 @@ class Kelas extends CI_Controller
 		echo json_encode($ret);
 	}
 
-	public function save()
+	public function save_kelas()
 	{
+		$this->load->library('form_validation');
+	
+		$this->form_validation->set_rules('tahun_pelajaran', 'Nama Tahun Pelajaran', 'required', [
+			'required' => 'Nama Tahun Pelajaran wajib dipilih.'
+		]);
 
-		$id = $this->input->post('id');
-		$id_tahun_pelajaran = $this->input->post('id_tahun_pelajaran');
-		$data['nama_kelas'] = $this->input->post('nama_kelas');
-		$data['id_jurusan'] = $this->input->post('id_jurusan');
-		$data['created_at'] = date('Y-m-d H:i:s');
-		$data['updated_at'] = date('Y-m-d H:i:s');
-		$data['deleted_at'] = 0;
-
-		if ($data['nama_kelas']) {
+		$this->form_validation->set_rules('nama_kelas', 'Nama Kelas', 'required|trim|max_length[100]', [
+			'required' => 'Nama Kelas wajib diisi.',
+			'max_length' => 'Nama Kelas tidak boleh lebih dari 100 karakter.'
+		]);
+	
+		if ($this->form_validation->run() == FALSE) {
+			echo json_encode([
+				'status' => false,
+				'error' => $this->form_validation->error_array()
+			]);
+		} else {
+			$id = $this->input->post('id');
+			$data['nama_kelas'] = $this->input->post('nama_kelas');
+			$data['id_jurusan'] = $this->input->post('id_jurusan');
+			$data['created_at'] = date('Y-m-d H:i:s');
+			$data['updated_at'] = date('Y-m-d H:i:s');
+			$data['deleted_at'] = 0;
+	
 			$cek = $this->md->cekKelasDuplicate($data['nama_kelas'], $data['id_jurusan'], $id);
 			if ($cek->num_rows() > 0) {
-				$ret['status'] = false;
-				$ret['message'] = 'Kelas sudah ada';
+				echo json_encode([
+					'status' => false,
+					'message' => 'Kelas sudah ada'
+				]);
 			} else {
 				if ($id) {
 					$this->md->updateKelas($id, $data);
-					$ret['status'] = true;
-					$ret['message'] = 'Data berhasil diupdate';
+					echo json_encode([
+						'status' => true,
+						'message' => 'Data berhasil diupdate'
+					]);
 				} else {
 					$this->md->saveKelas($data);
-					$ret['status'] = true;
-					$ret['message'] = 'Data berhasil disimpan';
+					echo json_encode([
+						'status' => true,
+						'message' => 'Data berhasil disimpan'
+					]);
 				}
 			}
-		} else {
-			$ret['status'] = false;
-			$ret['message'] = 'Data tidak boleh kosong';
 		}
-
-		echo json_encode($ret);
 	}
+	
 
-	public function edit()
+	public function edit_kelas($id)
 	{
-		$id = $this->input->post('id');
+		// $id = $this->input->post('id');
 		$q = $this->md->getKelasByID($id);
 		if ($q->num_rows() > 0) {
 			$ret['status'] = true;
@@ -119,7 +148,7 @@ class Kelas extends CI_Controller
 		echo json_encode($ret);
 	}
 
-	public function delete($id)
+	public function delete_kelas($id)
 	{
 		// $id = $this->input->post('id');
 		$data['deleted_at'] = time();
@@ -134,5 +163,3 @@ class Kelas extends CI_Controller
 		echo json_encode($ret);
 	}
 }
-
-/* End of file: Kelas.php */
